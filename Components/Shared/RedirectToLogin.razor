@@ -1,0 +1,21 @@
+@using Microsoft.AspNetCore.Components
+@inject NavigationManager Navigation
+@inject BlazorBlog.Services.UIService UIService
+
+@code {
+    protected override void OnInitialized()
+    {
+        var relativePath = Navigation.ToBaseRelativePath(Navigation.Uri);
+        
+        // 如果访问的是后台页面，跳转到后台登录页
+        if (relativePath.StartsWith("admin", StringComparison.OrdinalIgnoreCase))
+        {
+            Navigation.NavigateTo("/admin/login", true);
+        }
+        else
+        {
+            // 否则跳转到首页
+            Navigation.NavigateTo("/");
+        }
+    }
+}

@@ -1,0 +1,28 @@
+@using BlazorBlog.Components.Shared
+@using BlazorBlog.Services
+@inject UIService UIService
+@implements IDisposable
+@rendermode InteractiveServer
+
+<LoginModal />
+<RegisterModal @bind-IsVisible="isRegisterModalVisible" />
+
+@code {
+    private bool isRegisterModalVisible = false;
+
+    protected override void OnInitialized()
+    {
+        UIService.OnRegisterModalRequested += ShowRegisterModal;
+    }
+
+    private void ShowRegisterModal()
+    {
+        isRegisterModalVisible = true;
+        InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        UIService.OnRegisterModalRequested -= ShowRegisterModal;
+    }
+}

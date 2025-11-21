@@ -1,0 +1,144 @@
+@page "/test-db"
+@using BlazorBlog.Data
+@using BlazorBlog.Models
+@using Microsoft.EntityFrameworkCore
+@inject BlogDbContext DbContext
+@rendermode InteractiveServer
+
+<PageTitle>Database Test</PageTitle>
+
+<div class="container mt-5">
+    <h1>数据库连接测试</h1>
+    
+    @if (isLoading)
+    {
+        <p>正在加载...</p>
+    }
+    else if (error != null)
+    {
+        <div class="alert alert-danger">
+            <h4>连接失败</h4>
+            <p>@error</p>
+            <p class="small">请检查 appsettings.json 中的连接字符串和数据库密码</p>
+        </div>
+    }
+    else
+    {
+        <div class="alert alert-success">
+            <h4>✅ 数据库连接成功！</h4>
+        </div>
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5>用户列表</h5>
+            </div>
+            <div class="card-body">
+                @if (users != null && users.Any())
+                {
+                    <ul class="list-group">
+                        @foreach (var user in users)
+                        {
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                <span>@user.Username</span>
+                                <span class="badge bg-primary rounded-pill">@user.PostsCount 篇文章</span>
+                            </li>
+                        }
+                    </ul>
+                }
+                else
+                {
+                    <p>没有找到用户数据</p>
+                }
+            </div>
+        </div>
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5>分类列表</h5>
+            </div>
+            <div class="card-body">
+                @if (categories != null && categories.Any())
+                {
+                    <ul class="list-group">
+                        @foreach (var category in categories)
+                        {
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                <span>
+                                    @if (!string.IsNullOrEmpty(category.Icon))
+                                    {
+                                        <i class="@category.Icon me-2"></i>
+                                    }
+                                    @category.Name
+                                </span>
+                                <span class="badge bg-primary rounded-pill">@category.PostsCount 篇文章</span>
+                            </li>
+                        }
+                    </ul>
+                }
+                else
+                {
+                    <p>没有找到分类数据</p>
+                }
+            </div>
+        </div>
+        
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5>标签列表</h5>
+            </div>
+            <div class="card-body">
+                @if (tags != null && tags.Any())
+                {
+                    <div class="d-flex flex-wrap gap-2">
+                        @foreach (var tag in tags)
+                        {
+                            <span class="badge" style="background-color: @tag.Color; font-size: 0.9rem;">
+                                @tag.Name
+                            </span>
+                        }
+                    </div>
+                }
+                else
+                {
+                    <p>没有找到标签数据</p>
+                }
+            </div>
+        </div>
+        
+        <div class="mt-4">
+            <a href="/" class="btn btn-primary">返回首页</a>
+        </div>
+    }
+</div>
+
+@code {
+    private bool isLoading = true;
+    private string? error = null;
+    private List<Category> categories = new();
+    private List<Tag> tags = new();
+    private List<User> users = new();
+    
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            // 测试数据库连接并获取数据
+            categories = await DbContext.Categories
+                .OrderBy(c => c.SortOrder)
+                .ToListAsync();
+            
+            tags = await DbContext.Tags
+                .OrderBy(t => t.Name)
+                .ToListAsync();
+            
+            users = await DbContext.Users
+                .OrderBy(u => u.Nickname)
+                .ToListAsync();
+
+            isLoading = false;
+        }
+        catch (Exception ex)
+        {
+            error = ex.Message;
+            isLoading = false;
+        }
+    }
+}

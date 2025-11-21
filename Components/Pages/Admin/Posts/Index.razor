@@ -1,0 +1,166 @@
+@page "/admin/posts"
+@layout AdminLayout
+@using BlazorBlog.Data
+@using Microsoft.EntityFrameworkCore
+@inject BlogDbContext DbContext
+@rendermode InteractiveServer
+
+<PageTitle>文章管理 - 管理后台</PageTitle>
+
+<div class="admin-page-header">
+    <h1 class="admin-page-title">文章管理</h1>
+    <p class="admin-page-subtitle">管理所有博客文章</p>
+</div>
+
+@if (isLoading)
+{
+    <p>正在加载...</p>
+}
+else
+{
+    <div class="admin-card">
+        <div class="admin-card-header">
+            <h3 class="admin-card-title">文章列表 (@posts.Count 篇)</h3>
+            <div class="d-flex gap-2">
+                <select @bind="filterStatus" @bind:after="FilterPosts" class="admin-form-input" style="width: 150px;">
+                    <option value="">全部状态</option>
+                    <option value="published">已发布</option>
+                    <option value="draft">草稿</option>
+                    <option value="archived">归档</option>
+                </select>
+                <input type="text" @bind="searchTerm" @bind:event="oninput" @onkeyup="SearchPosts" 
+                       placeholder="搜索文章..." class="admin-form-input" style="width: 250px;" />
+            </div>
+        </div>
+        <div class="admin-card-body">
+            @if (filteredPosts.Any())
+            {
+                <table class="admin-table">
+                    <thead>
+                        <tr>
+                            <th>标题</th>
+                            <th>作者</th>
+                            <th>分类</th>
+                            <th>状态</th>
+                            <th>浏览量</th>
+                            <th>点赞数</th>
+                            <th>发布时间</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var post in filteredPosts)
+                        {
+                            <tr>
+                                <td style="max-width: 300px;">
+                                    <div class="text-truncate">@post.Title</div>
+                                </td>
+                                <td>@post.User.Username</td>
+                                <td>
+                                    @if (post.Categories.Any())
+                                    {
+                                        <span class="badge bg-info">@post.Categories.First().Name</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">-</span>
+                                    }
+                                </td>
+                                <td>
+                                    <span class="status-badge status-@post.Status">
+                                        @(post.Status == "published" ? "已发布" : post.Status == "draft" ? "草稿" : "归档")
+                                    </span>
+                                </td>
+                                <td>@post.ViewsCount</td>
+                                <td>@post.LikesCount</td>
+                                <td>@(post.PublishedAt?.ToString("yyyy-MM-dd") ?? "-")</td>
+                                <td>
+                                    <div class="table-actions">
+                                        <button class="btn-action btn-action-primary">编辑</button>
+                                        <button class="btn-action btn-action-danger" @onclick="() => DeletePost(post.Id)">删除</button>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+            else
+            {
+                <p class="text-muted text-center py-4">没有找到文章</p>
+            }
+        </div>
+    </div>
+}
+
+@code {
+    private bool isLoading = true;
+    private List<Post> posts = new();
+    private List<Post> filteredPosts = new();
+    private string searchTerm = string.Empty;
+    private string filterStatus = string.Empty;
+    
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadPosts();
+    }
+    
+    private async Task LoadPosts()
+    {
+        try
+        {
+            posts = await DbContext.Posts
+                .Include(p => p.User)
+                .Include(p => p.Categories)
+                .OrderByDescending(p => p.CreatedAt)
+                .ToListAsync();
+            
+            filteredPosts = posts;
+            isLoading = false;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading posts: {ex.Message}");
+            isLoading = false;
+        }
+    }
+    
+    private void SearchPosts()
+    {
+        ApplyFilters();
+    }
+    
+    private void FilterPosts()
+    {
+        ApplyFilters();
+    }
+    
+    private void ApplyFilters()
+    {
+        filteredPosts = posts;
+        
+        if (!string.IsNullOrWhiteSpace(searchTerm))
+        {
+            filteredPosts = filteredPosts.Where(p => 
+                p.Title.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ||
+                (p.Summary != null && p.Summary.Contains(searchTerm, StringComparison.OrdinalIgnoreCase))
+            ).ToList();
+        }
+        
+        if (!string.IsNullOrWhiteSpace(filterStatus))
+        {
+            filteredPosts = filteredPosts.Where(p => p.Status == filterStatus).ToList();
+        }
+    }
+    
+    private async Task DeletePost(Guid postId)
+    {
+        var post = await DbContext.Posts.FindAsync(postId);
+        if (post != null)
+        {
+            DbContext.Posts.Remove(post);
+            await DbContext.SaveChangesAsync();
+            await LoadPosts();
+        }
+    }
+}

@@ -1,0 +1,208 @@
+﻿@page "/"
+@using BlazorBlog.Models
+@using BlazorBlog.Services.Interfaces
+@inject IBlogService BlogService
+@inject AuthenticationStateProvider AuthStateProvider
+
+<PageTitle>IT技术分享社区</PageTitle>
+
+<div class="container">
+    <!-- Hero Section -->
+    <section class="hero-section text-center py-5 mb-4">
+        <h1 class="display-4 fw-bold mb-3 text-primary">IT技术分享社区 <span class="badge bg-danger fs-6 align-middle">LIVE</span></h1>
+        <p class="lead text-muted mb-4">探索前沿技术，分享开发经验，打造优质IT学习平台</p>
+        <AuthorizeView>
+            <Authorized>
+                <div class="d-flex justify-content-center gap-3 mb-4">
+                    <a href="/write" class="btn btn-primary btn-lg px-4">
+                        <i class="bi bi-pencil-square me-2"></i>写文章
+                    </a>
+                </div>
+            </Authorized>
+            <NotAuthorized>
+            </NotAuthorized>
+        </AuthorizeView>
+        
+        <div class="d-flex justify-content-center gap-4 text-muted small">
+            <span><i class="bi bi-file-text me-1"></i> 128篇文章</span>
+            <span><i class="bi bi-people me-1"></i> 1.2K位作者</span>
+            <span><i class="bi bi-clock me-1"></i> 今日12篇新文</span>
+        </div>
+    </section>
+
+    <!-- Featured Section -->
+    <section class="featured-section mb-5">
+        <h4 class="mb-3 fw-bold"><i class="bi bi-star me-2 text-primary"></i>今日精选</h4>
+        <div class="row g-4">
+            @if (posts != null)
+            {
+                @foreach (var post in posts.Take(3))
+                {
+                    <div class="col-md-4">
+                        <div class="card h-100 border-0 shadow-sm featured-card">
+                            <div class="card-img-top position-relative" style="height: 200px; overflow: hidden;">
+                                <img src="@post.ImageUrl" class="w-100 h-100 object-fit-cover" alt="@post.Title">
+                                <span class="badge bg-warning text-dark position-absolute top-0 end-0 m-3">精选</span>
+                            </div>
+                            <div class="card-body">
+                                <h5 class="card-title fw-bold text-truncate">@post.Title</h5>
+                                <p class="card-text text-muted small line-clamp-2">@post.Content</p>
+                                <div class="d-flex align-items-center mt-3">
+                                    <img src="@post.AuthorAvatar" class="rounded-circle me-2" width="24" height="24">
+                                    <small class="text-muted me-auto">@post.Author</small>
+                                    <small class="text-muted"><i class="bi bi-eye me-1"></i>@post.Views</small>
+                                    <small class="text-muted ms-3"><i class="bi bi-star me-1"></i>@post.Likes</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                }
+            }
+        </div>
+    </section>
+
+    <div class="row g-4">
+        <!-- Main Content -->
+        <div class="col-lg-8">
+            <div class="bg-white rounded-4 p-4 shadow-sm">
+                <!-- Tabs -->
+                <ul class="nav nav-pills mb-4 gap-2">
+                    <li class="nav-item"><a class="nav-link active" href="#">🔥 热门</a></li>
+                    <li class="nav-item"><a class="nav-link text-secondary" href="#">前端开发</a></li>
+                    <li class="nav-item"><a class="nav-link text-secondary" href="#">后端开发</a></li>
+                    <li class="nav-item"><a class="nav-link text-secondary" href="#">移动开发</a></li>
+                    <li class="nav-item"><a class="nav-link text-secondary" href="#">AI/算法</a></li>
+                    <li class="nav-item ms-auto text-muted small align-self-center">共 9 篇</li>
+                </ul>
+
+                <!-- Post List -->
+                <div class="d-flex flex-column gap-4">
+                    @if (posts != null)
+                    {
+                        @foreach (var post in posts.Skip(3))
+                        {
+                            <div class="d-flex gap-3 post-item">
+                                <img src="@post.ImageUrl" class="rounded-3 object-fit-cover" width="200" height="120" alt="@post.Title">
+                                <div class="flex-grow-1">
+                                    <h5 class="fw-bold mb-2">@post.Title</h5>
+                                    <div class="mb-2">
+                                        @foreach(var tag in post.Tags)
+                                        {
+                                            <span class="badge bg-light text-primary me-1">#@tag</span>
+                                        }
+                                    </div>
+                                    <p class="text-muted small line-clamp-2 mb-2">@post.Content</p>
+                                    <div class="d-flex align-items-center text-muted small">
+                                        <span class="me-3">@post.Author</span>
+                                        <span><i class="bi bi-eye me-1"></i>@post.Views</span>
+                                        <span class="ms-3"><i class="bi bi-chat me-1"></i>23</span>
+                                        <span class="ms-3"><i class="bi bi-hand-thumbs-up me-1"></i>@post.Likes</span>
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                    }
+                </div>
+            </div>
+        </div>
+
+        <!-- Sidebar -->
+        <div class="col-lg-4">
+            <!-- Weather/Time Widget -->
+            <div class="card border-0 shadow-sm mb-4 bg-primary-subtle">
+                <div class="card-body">
+                    <h6 class="text-primary fw-bold mb-3"><i class="bi bi-sun me-2"></i>上午好</h6>
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h2 class="mb-0 fw-bold">11:46</h2>
+                        <span class="badge bg-white text-primary">成都 24°C</span>
+                    </div>
+                    <div class="row text-center g-2">
+                        <div class="col-6">
+                            <div class="bg-white rounded-3 p-2">
+                                <div class="h4 fw-bold mb-0 text-primary">7</div>
+                                <small class="text-muted">连续签到</small>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="bg-white rounded-3 p-2">
+                                <div class="h4 fw-bold mb-0 text-primary">128</div>
+                                <small class="text-muted">累计签到</small>
+                            </div>
+                        </div>
+                    </div>
+                    <button class="btn btn-primary w-100 mt-3 rounded-pill">立即签到</button>
+                </div>
+            </div>
+
+            <!-- Author Ranking -->
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white border-0 pt-3 pb-0">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h6 class="fw-bold mb-0"><i class="bi bi-trophy me-2 text-warning"></i>作者榜</h6>
+                        <a href="#" class="text-decoration-none small text-muted">本周</a>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="d-flex align-items-center mb-3">
+                        <span class="badge bg-danger me-2">1</span>
+                        <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Felix" class="rounded-circle me-2" width="32">
+                        <div class="flex-grow-1">
+                            <div class="fw-bold small">全栈开发者</div>
+                            <div class="text-muted x-small">等级 Lv.8</div>
+                        </div>
+                        <span class="text-primary small">982</span>
+                    </div>
+                    <div class="d-flex align-items-center mb-3">
+                        <span class="badge bg-warning me-2">2</span>
+                        <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Aneka" class="rounded-circle me-2" width="32">
+                        <div class="flex-grow-1">
+                            <div class="fw-bold small">Java大师</div>
+                            <div class="text-muted x-small">等级 Lv.7</div>
+                        </div>
+                        <span class="text-primary small">856</span>
+                    </div>
+                    <div class="d-flex align-items-center">
+                        <span class="badge bg-info me-2">3</span>
+                        <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Bob" class="rounded-circle me-2" width="32">
+                        <div class="flex-grow-1">
+                            <div class="fw-bold small">AI研究员</div>
+                            <div class="text-muted x-small">等级 Lv.6</div>
+                        </div>
+                        <span class="text-primary small">723</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .line-clamp-2 {
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+    .x-small {
+        font-size: 0.75rem;
+    }
+    .object-fit-cover {
+        object-fit: cover;
+    }
+    .nav-pills .nav-link.active {
+        background-color: var(--primary-color);
+    }
+    .featured-card:hover .card-img-top img {
+        transform: scale(1.05);
+        transition: transform 0.3s ease;
+    }
+</style>
+
+@code {
+    private List<BlogPost>? posts;
+
+    protected override async Task OnInitializedAsync()
+    {
+        posts = await BlogService.GetBlogPostsAsync();
+    }
+}

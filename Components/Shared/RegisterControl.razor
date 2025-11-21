@@ -1,0 +1,14 @@
+@using BlazorBlog.Components.Shared
+@using BlazorBlog.Services
+@inject UIService UIService
+@rendermode InteractiveServer
+
+<button class="btn btn-primary btn-login" @onclick="HandleRegisterClick">注册</button>
+
+@code {
+    private void HandleRegisterClick()
+    {
+        UIService.ShowRegisterModal();
+    }
+
+}

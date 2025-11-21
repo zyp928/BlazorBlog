@@ -1,0 +1,227 @@
+@page "/admin/tags"
+@layout AdminLayout
+@using BlazorBlog.Data
+@using Microsoft.EntityFrameworkCore
+@inject BlogDbContext DbContext
+@rendermode InteractiveServer
+
+<PageTitle>标签管理 - 管理后台</PageTitle>
+
+<div class="admin-page-header">
+    <h1 class="admin-page-title">标签管理</h1>
+    <p class="admin-page-subtitle">管理文章标签</p>
+</div>
+
+@if (isLoading)
+{
+    <p>正在加载...</p>
+}
+else
+{
+    <div class="row">
+        <!-- 标签列表 -->
+        <div class="col-md-8">
+            <div class="admin-card">
+                <div class="admin-card-header">
+                    <h3 class="admin-card-title">标签列表 (@tags.Count 个)</h3>
+                </div>
+                <div class="admin-card-body">
+                    @if (tags.Any())
+                    {
+                        <table class="admin-table">
+                            <thead>
+                                <tr>
+                                    <th>名称</th>
+                                    <th>Slug</th>
+                                    <th>颜色</th>
+                                    <th>文章数</th>
+                                    <th>创建时间</th>
+                                    <th>操作</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var tag in tags)
+                                {
+                                    <tr>
+                                        <td>
+                                            <span class="badge" style="background-color: @tag.Color; color: white;">
+                                                @tag.Name
+                                            </span>
+                                        </td>
+                                        <td>@tag.Slug</td>
+                                        <td>
+                                            <div class="d-flex align-items-center gap-2">
+                                                <div style="width: 24px; height: 24px; background-color: @tag.Color; border-radius: 4px;"></div>
+                                                <span>@tag.Color</span>
+                                            </div>
+                                        </td>
+                                        <td>@tag.PostsCount</td>
+                                        <td>@tag.CreatedAt.ToString("yyyy-MM-dd")</td>
+                                        <td>
+                                            <div class="table-actions">
+                                                <button class="btn-action btn-action-primary" @onclick="() => EditTag(tag)">编辑</button>
+                                                <button class="btn-action btn-action-danger" @onclick="() => DeleteTag(tag.Id)">删除</button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    }
+                    else
+                    {
+                        <p class="text-muted text-center py-4">暂无标签</p>
+                    }
+                </div>
+            </div>
+        </div>
+        
+        <!-- 添加/编辑标签表单 -->
+        <div class="col-md-4">
+            <div class="admin-card">
+                <div class="admin-card-header">
+                    <h3 class="admin-card-title">@(editingTag != null ? "编辑标签" : "添加标签")</h3>
+                </div>
+                <div class="admin-card-body">
+                    <div class="admin-form-group">
+                        <label class="admin-form-label">名称</label>
+                        <input type="text" @bind="tagForm.Name" class="admin-form-input" placeholder="输入标签名称" />
+                    </div>
+                    
+                    <div class="admin-form-group">
+                        <label class="admin-form-label">Slug</label>
+                        <input type="text" @bind="tagForm.Slug" class="admin-form-input" placeholder="URL 标识符" />
+                    </div>
+                    
+                    <div class="admin-form-group">
+                        <label class="admin-form-label">描述</label>
+                        <textarea @bind="tagForm.Description" class="admin-form-input admin-form-textarea" placeholder="标签描述"></textarea>
+                    </div>
+                    
+                    <div class="admin-form-group">
+                        <label class="admin-form-label">颜色</label>
+                        <div class="d-flex gap-2">
+                            <input type="color" @bind="tagForm.Color" style="width: 60px; height: 38px; border: 1px solid #e2e8f0; border-radius: 8px;" />
+                            <input type="text" @bind="tagForm.Color" class="admin-form-input flex-grow-1" placeholder="#4f46e5" />
+                        </div>
+                    </div>
+                    
+                    <div class="d-flex gap-2">
+                        <button class="btn-action btn-action-primary flex-grow-1" @onclick="SaveTag">
+                            @(editingTag != null ? "更新" : "添加")
+                        </button>
+                        @if (editingTag != null)
+                        {
+                            <button class="btn-action btn-action-secondary" @onclick="CancelEdit">取消</button>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private bool isLoading = true;
+    private List<Tag> tags = new();
+    private Tag? editingTag = null;
+    private TagForm tagForm = new();
+    
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadTags();
+    }
+    
+    private async Task LoadTags()
+    {
+        try
+        {
+            tags = await DbContext.Tags
+                .OrderBy(t => t.Name)
+                .ToListAsync();
+            
+            isLoading = false;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading tags: {ex.Message}");
+            isLoading = false;
+        }
+    }
+    
+    private void EditTag(Tag tag)
+    {
+        editingTag = tag;
+        tagForm = new TagForm
+        {
+            Name = tag.Name,
+            Slug = tag.Slug,
+            Description = tag.Description,
+            Color = tag.Color ?? "#4f46e5"
+        };
+    }
+    
+    private void CancelEdit()
+    {
+        editingTag = null;
+        tagForm = new TagForm();
+    }
+    
+    private async Task SaveTag()
+    {
+        try
+        {
+            if (editingTag != null)
+            {
+                // 更新现有标签
+                editingTag.Name = tagForm.Name;
+                editingTag.Slug = tagForm.Slug;
+                editingTag.Description = tagForm.Description;
+                editingTag.Color = tagForm.Color;
+                editingTag.UpdatedAt = DateTime.UtcNow;
+            }
+            else
+            {
+                // 创建新标签
+                var tag = new Tag
+                {
+                    Id = Guid.NewGuid(),
+                    Name = tagForm.Name,
+                    Slug = tagForm.Slug,
+                    Description = tagForm.Description,
+                    Color = tagForm.Color,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                };
+                DbContext.Tags.Add(tag);
+            }
+            
+            await DbContext.SaveChangesAsync();
+            await LoadTags();
+            CancelEdit();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error saving tag: {ex.Message}");
+        }
+    }
+    
+    private async Task DeleteTag(Guid tagId)
+    {
+        var tag = await DbContext.Tags.FindAsync(tagId);
+        if (tag != null)
+        {
+            DbContext.Tags.Remove(tag);
+            await DbContext.SaveChangesAsync();
+            await LoadTags();
+        }
+    }
+    
+    private class TagForm
+    {
+        public string Name { get; set; } = string.Empty;
+        public string Slug { get; set; } = string.Empty;
+        public string? Description { get; set; }
+        public string Color { get; set; } = "#4f46e5";
+    }
+}

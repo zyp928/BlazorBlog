@@ -1,0 +1,329 @@
+@page "/write"
+@using BlazorBlog.Services.Interfaces
+@using BlazorBlog.Models
+@inject IMarkdownService MarkdownService
+@inject IPostService PostService
+@inject ICategoryService CategoryService
+@inject ITagService TagService
+@inject AuthenticationStateProvider AuthStateProvider
+@inject NavigationManager Navigation
+@rendermode InteractiveServer
+
+<PageTitle>写文章 - IT技术社区</PageTitle>
+
+<div class="write-page">
+    <AuthorizeView>
+        <Authorized>
+            <!-- 顶部工具栏 -->
+            <div class="editor-toolbar">
+                <div class="container d-flex justify-content-between align-items-center">
+                    <div class="d-flex align-items-center gap-3">
+                        <a href="/" class="btn btn-link text-secondary">
+                            <i class="bi bi-arrow-left me-1"></i>返回首页
+                        </a>
+                        <span class="text-muted">|</span>
+                        <span class="text-muted small">
+                            <i class="bi bi-clock me-1"></i>自动保存于 @lastSaveTime
+                        </span>
+                    </div>
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-outline-secondary" @onclick="SaveDraft" disabled="@isSaving">
+                            <i class="bi bi-save me-1"></i>@(isSaving ? "保存中..." : "保存草稿")
+                        </button>
+                        <button class="btn btn-primary" @onclick="PublishArticle" disabled="@isPublishing">
+                            <i class="bi bi-send me-1"></i>@(isPublishing ? "发布中..." : "发布文章")
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 主编辑区 -->
+            <div class="editor-container">
+                <div class="container">
+                    <!-- 标题输入 -->
+                    <div class="title-section">
+                        <input type="text" 
+                               class="form-control form-control-lg title-input" 
+                               placeholder="请输入文章标题..." 
+                               @bind="article.Title"
+                               @bind:event="oninput"
+                               maxlength="100" />
+                        <div class="text-end text-muted small mt-1">@article.Title.Length / 100</div>
+                    </div>
+
+                    <!-- 编辑器和预览 -->
+                    <div class="row g-3 mt-3">
+                        <!-- Markdown 编辑器 -->
+                        <div class="col-lg-6">
+                            <div class="editor-panel">
+                                <div class="editor-panel-header">
+                                    <span><i class="bi bi-pencil me-2"></i>Markdown 编辑器</span>
+                                    <div class="editor-toolbar-icons">
+                                        <button class="btn btn-sm btn-link" @onclick='() => InsertMarkdown("# ", "")' title="标题">
+                                            <i class="bi bi-type-h1"></i>
+                                        </button>
+                                        <button class="btn btn-sm btn-link" @onclick='() => InsertMarkdown("**", "**")' title="加粗">
+                                            <i class="bi bi-type-bold"></i>
+                                        </button>
+                                        <button class="btn btn-sm btn-link" @onclick='() => InsertMarkdown("*", "*")' title="斜体">
+                                            <i class="bi bi-type-italic"></i>
+                                        </button>
+                                        <button class="btn btn-sm btn-link" @onclick='() => InsertMarkdown("`", "`")' title="代码">
+                                            <i class="bi bi-code"></i>
+                                        </button>
+                                        <button class="btn btn-sm btn-link" @onclick='() => InsertMarkdown("```\n", "\n```")' title="代码块">
+                                            <i class="bi bi-code-square"></i>
+                                        </button>
+                                        <button class="btn btn-sm btn-link" @onclick='() => InsertMarkdown("[", "](url)")' title="链接">
+                                            <i class="bi bi-link-45deg"></i>
+                                        </button>
+                                        <button class="btn btn-sm btn-link" @onclick='() => InsertMarkdown("![", "](url)")' title="图片">
+                                            <i class="bi bi-image"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                                <textarea class="editor-textarea" 
+                                          placeholder="开始写作... 支持 Markdown 语法"
+                                          @bind="article.Content"
+                                          @oninput="OnContentInput"></textarea>
+                                <div class="editor-panel-footer">
+                                    <span class="text-muted small">
+                                        <i class="bi bi-text-paragraph me-1"></i>字数：@wordCount
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 实时预览 -->
+                        <div class="col-lg-6">
+                            <div class="editor-panel">
+                                <div class="editor-panel-header">
+                                    <span><i class="bi bi-eye me-2"></i>实时预览</span>
+                                </div>
+                                <div class="preview-content">
+                                    @if (string.IsNullOrWhiteSpace(article.Content))
+                                    {
+                                        <div class="text-center text-muted py-5">
+                                            <i class="bi bi-file-earmark-text" style="font-size: 3rem;"></i>
+                                            <p class="mt-3">预览区域</p>
+                                            <p class="small">在左侧编辑器输入内容后，这里会实时显示渲染效果</p>
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        @((MarkupString)renderedHtml)
+                                    }
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 文章元数据 -->
+                    <div class="metadata-section mt-4">
+                        <h5 class="mb-3"><i class="bi bi-gear me-2"></i>文章设置</h5>
+                        <div class="row g-3">
+                            <!-- 分类选择 -->
+                            <div class="col-md-6">
+                                <label class="form-label">分类</label>
+                                <select class="form-select" @bind="selectedCategoryId">
+                                    <option value="">请选择分类</option>
+                                    @foreach (var category in categories)
+                                    {
+                                        <option value="@category.Id">@category.Name</option>
+                                    }
+                                </select>
+                            </div>
+
+                            <!-- 标签输入 -->
+                            <div class="col-md-6">
+                                <label class="form-label">标签</label>
+                                <input type="text" 
+                                       class="form-control" 
+                                       placeholder="输入标签，用逗号分隔" 
+                                       @bind="tagsInput"
+                                       @bind:event="oninput" />
+                                <small class="text-muted">例如：前端,React,JavaScript</small>
+                            </div>
+
+                            <!-- 摘要 -->
+                            <div class="col-12">
+                                <label class="form-label">文章摘要（选填）</label>
+                                <textarea class="form-control" 
+                                          rows="3" 
+                                          placeholder="简要描述文章内容..." 
+                                          @bind="article.Summary"
+                                          maxlength="200"></textarea>
+                                <div class="text-end text-muted small mt-1">@(article.Summary?.Length ?? 0) / 200</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </Authorized>
+        <NotAuthorized>
+            <div class="container text-center py-5">
+                <i class="bi bi-lock" style="font-size: 4rem; color: #cbd5e1;"></i>
+                <h3 class="mt-3">需要登录</h3>
+                <p class="text-muted">请先登录后再发表文章</p>
+                <a href="/" class="btn btn-primary">返回首页</a>
+            </div>
+        </NotAuthorized>
+    </AuthorizeView>
+</div>
+
+@code {
+    private Post article = new Post
+    {
+        Title = "",
+        Content = "",
+        Summary = "",
+        Status = "draft",
+        Visibility = "public",
+        IsOriginal = true
+    };
+
+    private List<Category> categories = new();
+    private List<Tag> tags = new();
+    private string selectedCategoryId = "";
+    private string tagsInput = "";
+    private string renderedHtml = "";
+    private string lastSaveTime = "未保存";
+    private bool isSaving = false;
+    private bool isPublishing = false;
+    private int wordCount = 0;
+    private System.Threading.Timer? autoSaveTimer;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // 加载分类和标签
+        categories = await CategoryService.GetAllCategoriesAsync();
+        tags = await TagService.GetAllTagsAsync();
+
+        // 启动自动保存定时器（每30秒）
+        autoSaveTimer = new System.Threading.Timer(async _ =>
+        {
+            await InvokeAsync(async () =>
+            {
+                if (!string.IsNullOrWhiteSpace(article.Title) || !string.IsNullOrWhiteSpace(article.Content))
+                {
+                    await SaveDraft();
+                }
+            });
+        }, null, TimeSpan.FromSeconds(30), TimeSpan.FromSeconds(30));
+    }
+
+    protected override void OnParametersSet()
+    {
+        UpdatePreview();
+        UpdateWordCount();
+    }
+
+    private void UpdatePreview()
+    {
+        if (!string.IsNullOrWhiteSpace(article.Content))
+        {
+            renderedHtml = MarkdownService.ToHtml(article.Content);
+        }
+    }
+
+    private void UpdateWordCount()
+    {
+        wordCount = article.Content?.Length ?? 0;
+    }
+
+    private void OnContentInput(ChangeEventArgs e)
+    {
+        article.Content = e.Value?.ToString() ?? "";
+        UpdatePreview();
+        UpdateWordCount();
+    }
+
+    private void InsertMarkdown(string before, string after)
+    {
+        article.Content += before + after;
+        UpdatePreview();
+        StateHasChanged();
+    }
+
+    private async Task SaveDraft()
+    {
+        if (string.IsNullOrWhiteSpace(article.Title))
+        {
+            return;
+        }
+
+        isSaving = true;
+        try
+        {
+            var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+            var username = authState.User.Identity?.Name;
+            
+            if (string.IsNullOrEmpty(username))
+                return;
+
+            var user = await ((IUserService)null!).GetUserByUsernameAsync(username);
+            if (user == null)
+                return;
+
+            article.UserId = user.Id;
+            article.Slug = Guid.NewGuid().ToString();
+            article.Status = "draft";
+
+            if (article.Id == Guid.Empty)
+            {
+                await PostService.CreatePostAsync(article);
+            }
+            else
+            {
+                await PostService.UpdatePostAsync(article);
+            }
+
+            lastSaveTime = DateTime.Now.ToString("HH:mm:ss");
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+
+    private async Task PublishArticle()
+    {
+        if (string.IsNullOrWhiteSpace(article.Title) || string.IsNullOrWhiteSpace(article.Content))
+        {
+            return;
+        }
+
+        isPublishing = true;
+        try
+        {
+            var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+            var username = authState.User.Identity?.Name;
+            
+            if (string.IsNullOrEmpty(username))
+                return;
+
+            article.Status = "published";
+            article.PublishedAt = DateTime.UtcNow;
+
+            if (article.Id == Guid.Empty)
+            {
+                await PostService.CreatePostAsync(article);
+            }
+            else
+            {
+                await PostService.UpdatePostAsync(article);
+            }
+
+            Navigation.NavigateTo("/", forceLoad: true);
+        }
+        finally
+        {
+            isPublishing = false;
+        }
+    }
+
+    public void Dispose()
+    {
+        autoSaveTimer?.Dispose();
+    }
+}

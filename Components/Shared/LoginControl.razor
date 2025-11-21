@@ -1,0 +1,13 @@
+@using BlazorBlog.Components.Shared
+@using BlazorBlog.Services
+@inject UIService UIService
+@rendermode InteractiveServer
+
+<button class="btn btn-primary btn-login" @onclick="HandleLoginClick">登录</button>
+
+@code {
+    private void HandleLoginClick()
+    {
+        UIService.ShowLoginModal();
+    }
+}

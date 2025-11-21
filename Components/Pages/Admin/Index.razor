@@ -1,0 +1,150 @@
+@page "/admin"
+@layout AdminLayout
+@using BlazorBlog.Services.Interfaces
+@inject IUserService UserService
+@inject IPostService PostService
+@inject ICommentService CommentService
+@rendermode InteractiveServer
+
+<PageTitle>管理后台 - 仪表板</PageTitle>
+
+<div class="admin-page-header">
+    <h1 class="admin-page-title">仪表板</h1>
+    <p class="admin-page-subtitle">欢迎回来，查看您的博客统计数据</p>
+</div>
+
+@if (isLoading)
+{
+    <p>正在加载...</p>
+}
+else
+{
+    <!-- 统计卡片 -->
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-card-header">
+                <span class="stat-card-title">总用户数</span>
+                <div class="stat-card-icon">
+                    <i class="bi bi-people"></i>
+                </div>
+            </div>
+            <div class="stat-card-value">@stats.TotalUsers</div>
+        </div>
+        
+        <div class="stat-card">
+            <div class="stat-card-header">
+                <span class="stat-card-title">总文章数</span>
+                <div class="stat-card-icon">
+                    <i class="bi bi-file-text"></i>
+                </div>
+            </div>
+            <div class="stat-card-value">@stats.TotalPosts</div>
+        </div>
+        
+        <div class="stat-card">
+            <div class="stat-card-header">
+                <span class="stat-card-title">总评论数</span>
+                <div class="stat-card-icon">
+                    <i class="bi bi-chat-dots"></i>
+                </div>
+            </div>
+            <div class="stat-card-value">@stats.TotalComments</div>
+        </div>
+        
+        <div class="stat-card">
+            <div class="stat-card-header">
+                <span class="stat-card-title">总浏览量</span>
+                <div class="stat-card-icon">
+                    <i class="bi bi-eye"></i>
+                </div>
+            </div>
+            <div class="stat-card-value">@stats.TotalViews</div>
+        </div>
+    </div>
+    
+    <!-- 最近文章 -->
+    <div class="admin-card">
+        <div class="admin-card-header">
+            <h3 class="admin-card-title">最近文章</h3>
+            <a href="/admin/posts" class="btn-action btn-action-primary">查看全部</a>
+        </div>
+        <div class="admin-card-body">
+            @if (recentPosts.Any())
+            {
+                <table class="admin-table">
+                    <thead>
+                        <tr>
+                            <th>标题</th>
+                            <th>作者</th>
+                            <th>状态</th>
+                            <th>浏览量</th>
+                            <th>发布时间</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var post in recentPosts)
+                        {
+                            <tr>
+                                <td>@post.Title</td>
+                                <td>@post.User.Username</td>
+                                <td>
+                                    <span class="status-badge status-@post.Status">
+                                        @(post.Status == "published" ? "已发布" : post.Status == "draft" ? "草稿" : "归档")
+                                    </span>
+                                </td>
+                                <td>@post.ViewsCount</td>
+                                <td>@(post.PublishedAt?.ToString("yyyy-MM-dd") ?? "-")</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+            else
+            {
+                <p class="text-muted">暂无文章</p>
+            }
+        </div>
+    </div>
+}
+
+@code {
+    private bool isLoading = true;
+    private DashboardStats stats = new();
+    private List<Post> recentPosts = new();
+    
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            // 使用服务层获取统计数据
+            stats.TotalUsers = await UserService.GetTotalUsersCountAsync();
+            stats.TotalPosts = await PostService.GetTotalPostsCountAsync();
+            stats.TotalComments = await CommentService.GetTotalCommentsCountAsync();
+            
+            // 获取所有文章计算总浏览量
+            var allPosts = await PostService.GetAllPostsAsync();
+            stats.TotalViews = allPosts.Sum(p => p.ViewsCount);
+            
+            // 获取最近文章（取前5条）
+            recentPosts = allPosts
+                .OrderByDescending(p => p.CreatedAt)
+                .Take(5)
+                .ToList();
+            
+            isLoading = false;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading dashboard: {ex.Message}");
+            isLoading = false;
+        }
+    }
+    
+    private class DashboardStats
+    {
+        public int TotalUsers { get; set; }
+        public int TotalPosts { get; set; }
+        public int TotalComments { get; set; }
+        public int TotalViews { get; set; }
+    }
+}

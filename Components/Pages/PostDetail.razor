@@ -1,0 +1,56 @@
+@page "/post/{Id:guid}"
+@using BlazorBlog.Models
+@using BlazorBlog.Services.Interfaces
+@inject IBlogService BlogService
+
+<PageTitle>@title</PageTitle>
+
+@if (post == null)
+{
+    if (notFound)
+    {
+        <div class="alert alert-danger">Post not found.</div>
+        <a href="/" class="btn btn-primary">Back to Home</a>
+    }
+    else
+    {
+        <p><em>Loading...</em></p>
+    }
+}
+else
+{
+    <article>
+        <header class="mb-4">
+            <h1 class="fw-bolder mb-1">@post.Title</h1>
+            <div class="text-muted fst-italic mb-2">Posted on @(post.PublishedAt?.ToLongDateString() ?? "N/A") by @post.User.Username</div>
+        </header>
+        <section class="mb-5">
+            <p class="fs-5 mb-4">@post.Content</p>
+        </section>
+    </article>
+    
+    <a href="/" class="btn btn-primary">Back to Home</a>
+}
+
+@code {
+    [Parameter]
+    public Guid Id { get; set; }
+
+    private Post? post;
+    private bool notFound = false;
+    private string title = "Loading...";
+
+    protected override async Task OnInitializedAsync()
+    {
+        post = await BlogService.GetPostByIdAsync(Id);
+        if (post == null)
+        {
+            notFound = true;
+            title = "Post Not Found";
+        }
+        else
+        {
+            title = post.Title;
+        }
+    }
+}

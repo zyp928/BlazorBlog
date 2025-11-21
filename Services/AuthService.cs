@@ -31,10 +31,10 @@ public class AuthService : IAuthService
         // In a real app, you should hash the password. 
         // For this demo, we'll assume plain text or simple comparison if not hashed yet.
         // Ideally: VerifyPassword(password, user.PasswordHash)
-        
+
         // For now, let's assume the password in DB is what we compare against 
         // (WARNING: NOT SECURE FOR PRODUCTION, JUST FOR DEMO)
-        if (user.PasswordHash != password) 
+        if (user.PasswordHash != password)
             return null;
 
         return user;
@@ -109,9 +109,9 @@ public class AuthService : IAuthService
                 return Task.FromResult(true);
             }
         }
-        
-        // 为了方便测试，保留后门：如果输入 1234 也算通过（仅限开发环境）
-        if (code == "1234") return Task.FromResult(true);
+
+        // 为了方便测试，保留后门：如果输入 123456 也算通过（仅限开发环境）
+        if (code == "123456") return Task.FromResult(true);
 
         return Task.FromResult(false);
     }

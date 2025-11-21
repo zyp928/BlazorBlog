@@ -4,13 +4,12 @@
 -- ====================================
 
 -- 启用 UUID 扩展
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 -- ====================================
 -- 1. 用户表 (users)
 -- ====================================
 CREATE TABLE users (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     username VARCHAR(50) UNIQUE NOT NULL,
     email VARCHAR(255) UNIQUE NOT NULL,
     phone VARCHAR(20) UNIQUE,
@@ -49,7 +48,7 @@ CREATE INDEX idx_users_created_at ON users(created_at);
 -- 2. 文章表 (posts)
 -- ====================================
 CREATE TABLE posts (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     
     -- 文章内容
@@ -96,7 +95,7 @@ CREATE INDEX idx_posts_views_count ON posts(views_count DESC);
 -- 3. 分类表 (categories)
 -- ====================================
 CREATE TABLE categories (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name VARCHAR(50) UNIQUE NOT NULL,
     slug VARCHAR(60) UNIQUE NOT NULL,
     description TEXT,
@@ -126,7 +125,7 @@ CREATE TABLE post_categories (
 -- 4. 标签表 (tags)
 -- ====================================
 CREATE TABLE tags (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name VARCHAR(50) UNIQUE NOT NULL,
     slug VARCHAR(60) UNIQUE NOT NULL,
     description TEXT,
@@ -152,7 +151,7 @@ CREATE TABLE post_tags (
 -- 5. 评论表 (comments)
 -- ====================================
 CREATE TABLE comments (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     post_id UUID NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     parent_id UUID REFERENCES comments(id) ON DELETE CASCADE, -- 支持评论回复
@@ -181,7 +180,7 @@ CREATE INDEX idx_comments_created_at ON comments(created_at DESC);
 -- 6. 点赞表 (likes)
 -- ====================================
 CREATE TABLE likes (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     target_type VARCHAR(20) NOT NULL, -- post, comment
     target_id UUID NOT NULL,
@@ -198,7 +197,7 @@ CREATE INDEX idx_likes_target ON likes(target_type, target_id);
 -- 7. 收藏表 (favorites)
 -- ====================================
 CREATE TABLE favorites (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     post_id UUID NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
     
@@ -214,7 +213,7 @@ CREATE INDEX idx_favorites_post_id ON favorites(post_id);
 -- 8. 关注表 (follows)
 -- ====================================
 CREATE TABLE follows (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     follower_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE, -- 关注者
     following_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE, -- 被关注者
     
@@ -231,7 +230,7 @@ CREATE INDEX idx_follows_following_id ON follows(following_id);
 -- 9. 文章浏览历史表 (post_views)
 -- ====================================
 CREATE TABLE post_views (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     post_id UUID NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
     user_id UUID REFERENCES users(id) ON DELETE SET NULL, -- 可选，未登录用户为 NULL
     ip_address INET,
@@ -248,7 +247,7 @@ CREATE INDEX idx_post_views_viewed_at ON post_views(viewed_at DESC);
 -- 10. 通知表 (notifications)
 -- ====================================
 CREATE TABLE notifications (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     
     type VARCHAR(50) NOT NULL, -- comment, like, follow, mention, system
@@ -269,7 +268,7 @@ CREATE INDEX idx_notifications_created_at ON notifications(created_at DESC);
 -- 11. 用户会话表 (user_sessions)
 -- ====================================
 CREATE TABLE user_sessions (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     
     token VARCHAR(500) UNIQUE NOT NULL,

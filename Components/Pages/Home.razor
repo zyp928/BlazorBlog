@@ -3,6 +3,8 @@
 @using BlazorBlog.Services.Interfaces
 @inject IBlogService BlogService
 @inject AuthenticationStateProvider AuthStateProvider
+@inject IJSRuntime JSRuntime
+@inject HttpClient Http
 
 <PageTitle>IT技术分享社区</PageTitle>
 
@@ -111,10 +113,10 @@
             <!-- Weather/Time Widget -->
             <div class="card border-0 shadow-sm mb-4 bg-primary-subtle">
                 <div class="card-body">
-                    <h6 class="text-primary fw-bold mb-3"><i class="bi bi-sun me-2"></i>上午好</h6>
+                    <h6 class="text-primary fw-bold mb-3"><i class="@currentWeatherIcon me-2"></i>@GetGreeting()</h6>
                     <div class="d-flex justify-content-between align-items-center mb-3">
-                        <h2 class="mb-0 fw-bold">11:46</h2>
-                        <span class="badge bg-white text-primary">成都 24°C</span>
+                        <h2 class="mb-0 fw-bold">@currentTime</h2>
+                        <span class="badge bg-white text-primary">@currentCity @currentTemp</span>
                     </div>
                     <div class="row text-center g-2">
                         <div class="col-6">
@@ -200,9 +202,153 @@
 
 @code {
     private List<BlogPost>? posts;
+    private string currentTime = DateTime.Now.ToString("HH:mm");
+    private string currentCity = "定位中...";
+    private string currentTemp = "";
+    private string currentWeatherIcon = "bi bi-sun"; // Default icon
+    private System.Threading.Timer? timer;
 
     protected override async Task OnInitializedAsync()
     {
         posts = await BlogService.GetBlogPostsAsync();
+        
+        // Start clock timer
+        timer = new System.Threading.Timer(_ =>
+        {
+            InvokeAsync(() =>
+            {
+                currentTime = DateTime.Now.ToString("HH:mm");
+                StateHasChanged();
+            });
+        }, null, 0, 1000);
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await GetLocationAndWeather();
+        }
+    }
+
+    private string GetGreeting()
+    {
+        var hour = DateTime.Now.Hour;
+        if (hour < 6) return "凌晨好";
+        if (hour < 9) return "早上好";
+        if (hour < 12) return "上午好";
+        if (hour < 14) return "中午好";
+        if (hour < 17) return "下午好";
+        if (hour < 19) return "傍晚好";
+        return "晚上好";
+    }
+
+    private async Task GetLocationAndWeather()
+    {
+        try
+        {
+            var position = await JSRuntime.InvokeAsync<GeolocationPosition>("getCurrentPosition");
+            if (position != null)
+            {
+                // Get Weather
+                var weatherUrl = $"https://api.open-meteo.com/v1/forecast?latitude={position.Latitude}&longitude={position.Longitude}&current_weather=true";
+                var weatherData = await Http.GetFromJsonAsync<WeatherResponse>(weatherUrl);
+                
+                if (weatherData?.CurrentWeather != null)
+                {
+                    currentTemp = $"{weatherData.CurrentWeather.Temperature}°C";
+                    currentWeatherIcon = GetWeatherIconClass(weatherData.CurrentWeather.WeatherCode);
+                }
+
+                // Get City Name (Reverse Geocoding using Nominatim)
+                // Note: In production, you should use a proper geocoding service with an API key.
+                // Nominatim has usage limits and requires a User-Agent.
+                var request = new HttpRequestMessage(HttpMethod.Get, 
+                    $"https://nominatim.openstreetmap.org/reverse?format=json&lat={position.Latitude}&lon={position.Longitude}&zoom=10");
+                request.Headers.Add("User-Agent", "BlazorBlog/1.0");
+                
+                var response = await Http.SendAsync(request);
+                if (response.IsSuccessStatusCode)
+                {
+                    var addressData = await response.Content.ReadFromJsonAsync<NominatimResponse>();
+                    // Try to find the most relevant city name
+                    currentCity = addressData?.Address?.City ?? 
+                                 addressData?.Address?.Town ?? 
+                                 addressData?.Address?.District ?? 
+                                 "未知城市";
+                }
+                
+                await InvokeAsync(StateHasChanged);
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error getting weather/location: {ex.Message}");
+            currentCity = "定位失败";
+            currentTemp = "";
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private string GetWeatherIconClass(int weatherCode)
+    {
+        // WMO Weather interpretation codes (WW)
+        // https://open-meteo.com/en/docs
+        return weatherCode switch
+        {
+            0 => "bi bi-sun", // Clear sky
+            1 or 2 or 3 => "bi bi-cloud-sun", // Mainly clear, partly cloudy, and overcast
+            45 or 48 => "bi bi-cloud-haze", // Fog
+            51 or 53 or 55 => "bi bi-cloud-drizzle", // Drizzle
+            61 or 63 or 65 => "bi bi-cloud-rain", // Rain
+            71 or 73 or 75 => "bi bi-cloud-snow", // Snow
+            80 or 81 or 82 => "bi bi-cloud-rain-heavy", // Rain showers
+            95 or 96 or 99 => "bi bi-cloud-lightning-rain", // Thunderstorm
+            _ => "bi bi-cloud" // Default
+        };
+    }
+
+    public void Dispose()
+    {
+        timer?.Dispose();
+    }
+
+    private class GeolocationPosition
+    {
+        public double Latitude { get; set; }
+        public double Longitude { get; set; }
+    }
+
+    private class WeatherResponse
+    {
+        [System.Text.Json.Serialization.JsonPropertyName("current_weather")]
+        public CurrentWeather? CurrentWeather { get; set; }
+    }
+
+    private class CurrentWeather
+    {
+        [System.Text.Json.Serialization.JsonPropertyName("temperature")]
+        public double Temperature { get; set; }
+        
+        [System.Text.Json.Serialization.JsonPropertyName("weathercode")]
+        public int WeatherCode { get; set; }
+    }
+
+    private class NominatimResponse
+    {
+        [System.Text.Json.Serialization.JsonPropertyName("address")]
+        public Address? Address { get; set; }
+    }
+
+    private class Address
+    {
+        [System.Text.Json.Serialization.JsonPropertyName("city")]
+        public string? City { get; set; }
+        
+        [System.Text.Json.Serialization.JsonPropertyName("town")]
+        public string? Town { get; set; }
+        
+        [System.Text.Json.Serialization.JsonPropertyName("district")]
+        public string? District { get; set; }
     }
 }

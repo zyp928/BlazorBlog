@@ -13,45 +13,43 @@
             <button class="btn-close-modal" @onclick="CloseModal">
                 <i class="bi bi-x-lg"></i>
             </button>
-            
+
             <div class="modal-header">
                 <h3 class="modal-title">登录后继续操作</h3>
                 <p class="modal-subtitle">
-                    <span class="highlight">CSDN</span> 技术社区
+                    <span class="highlight">BlazorBlog</span> 技术社区
                 </p>
             </div>
 
             <div class="login-tabs">
                 <div class="tab-item @(activeTab == "code" ? "active" : "")" @onclick='() => activeTab = "code"'>验证码登录</div>
-                <div class="tab-item @(activeTab == "password" ? "active" : "")" @onclick='() => activeTab = "password"'>密码登录</div>
+                <div class="tab-item @(activeTab == "password" ? "active" : "")" @onclick='() => activeTab = "password"'>
+                    密码登录</div>
             </div>
 
             <div class="modal-body">
                 @if (activeTab == "code")
                 {
                     <!-- 邮箱验证码登录 - 使用 EditForm -->
-                    <EditForm Model="emailLoginModel" OnValidSubmit="HandleEmailValidSubmit" OnInvalidSubmit="HandleEmailInvalidSubmit">
+                    <EditForm Model="emailLoginModel" OnValidSubmit="HandleEmailValidSubmit"
+                        OnInvalidSubmit="HandleEmailInvalidSubmit">
                         <DataAnnotationsValidator />
-                        
+
                         <div class="form-group mb-3">
-                            <div class="input-group">
-                                <span class="input-group-text bg-light border-end-0"><i class="bi bi-envelope"></i></span>
-                                <InputText class="form-input border-start-0 ps-0" 
-                                          @bind-Value="emailLoginModel.Email" 
-                                          placeholder="请输入邮箱地址" />
+                            <div class="login-input-group">
+                                <i class="bi bi-envelope input-icon"></i>
+                                <InputText class="form-input with-icon" @bind-Value="emailLoginModel.Email"
+                                    placeholder="请输入邮箱地址" />
                             </div>
                             <ValidationMessage For="@(() => emailLoginModel.Email)" class="text-danger small mt-1" />
                         </div>
-                        
+
                         <div class="form-group mb-3">
-                            <div class="input-group">
-                                <InputText class="form-input" 
-                                          @bind-Value="emailLoginModel.VerificationCode" 
-                                          placeholder="请输入验证码" />
-                                <button class="btn-get-code" 
-                                        type="button" 
-                                        @onclick="SendVerificationCode"
-                                        disabled="@(countdown > 0)">
+                            <div class="login-input-group">
+                                <InputText class="form-input with-btn" @bind-Value="emailLoginModel.VerificationCode"
+                                    placeholder="请输入验证码" />
+                                <button class="btn-get-code" type="button" @onclick="SendVerificationCode"
+                                    disabled="@(countdown > 0)">
                                     @(countdown > 0 ? $"{countdown}秒后重试" : "获取验证码")
                                 </button>
                             </div>
@@ -71,22 +69,18 @@
                     <!-- 密码登录 - 使用 EditForm -->
                     <EditForm Model="loginModel" OnValidSubmit="HandleValidSubmit" OnInvalidSubmit="HandleInvalidSubmit">
                         <DataAnnotationsValidator />
-                        
+
                         <div class="form-group mb-3">
-                            <div class="input-group">
-                                <InputText class="form-input" 
-                                          @bind-Value="loginModel.Username" 
-                                          placeholder="请输入账号/邮箱/手机号" />
+                            <div class="login-input-group">
+                                <InputText class="form-input" @bind-Value="loginModel.Username" placeholder="请输入账号/邮箱/手机号" />
                             </div>
                             <ValidationMessage For="@(() => loginModel.Username)" class="text-danger small mt-1" />
                         </div>
-                        
+
                         <div class="form-group mb-3">
-                            <div class="input-group">
-                                <InputText type="password" 
-                                          class="form-input" 
-                                          @bind-Value="loginModel.Password" 
-                                          placeholder="请输入密码" />
+                            <div class="login-input-group">
+                                <InputText type="password" class="form-input" @bind-Value="loginModel.Password"
+                                    placeholder="请输入密码" />
                             </div>
                             <ValidationMessage For="@(() => loginModel.Password)" class="text-danger small mt-1" />
                         </div>
@@ -99,7 +93,7 @@
                         <button type="submit" class="btn-submit">登录</button>
                     </EditForm>
                 }
-                
+
                 <div class="agreement">
                     注册登录即表示同意 <a href="#">用户协议</a>、<a href="#">隐私政策</a>
                 </div>
@@ -114,7 +108,7 @@
                         <i class="bi bi-wechat"></i>
                     </button>
                     <button class="social-btn blue">
-                        <i class="bi bi-qq"></i>
+                        <i class="bi bi-tencent-qq"></i>
                     </button>
                     <button class="social-btn black">
                         <i class="bi bi-github"></i>
@@ -158,7 +152,6 @@
         public string Email { get; set; } = "";
 
         [Required(ErrorMessage = "请输入验证码")]
-        [StringLength(6, MinimumLength = 6, ErrorMessage = "验证码为6位数字")]
         [RegularExpression(@"^\d{6}$", ErrorMessage = "验证码必须为6位数字")]
         public string VerificationCode { get; set; } = "";
     }
@@ -218,25 +211,25 @@
 
         // 调用后端发送验证码
         await AuthService.SendEmailVerificationCodeAsync(emailLoginModel.Email);
-        
+
         emailErrorMessage = "验证码已发送（请查看控制台模拟输出）";
-        
+
         // 启动倒计时
         countdown = 60;
         countdownTimer = new System.Threading.Timer(_ =>
         {
             InvokeAsync(() =>
+    {
+            if (countdown > 0)
             {
-                if (countdown > 0)
-                {
-                    countdown--;
-                    StateHasChanged();
-                }
-                else
-                {
-                    countdownTimer?.Dispose();
-                }
-            });
+                countdown--;
+                StateHasChanged();
+            }
+            else
+            {
+                countdownTimer?.Dispose();
+            }
+        });
         }, null, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1));
     }
 
@@ -244,10 +237,10 @@
     private async Task HandleEmailValidSubmit()
     {
         emailErrorMessage = "";
-        
+
         // 1. 调用后端验证验证码
         var isValid = await AuthService.VerifyEmailCodeAsync(emailLoginModel.Email, emailLoginModel.VerificationCode);
-        
+
         if (!isValid)
         {
             emailErrorMessage = "验证码错误或已过期";
@@ -256,7 +249,7 @@
 
         // 2. 尝试通过邮箱登录
         var user = await AuthService.LoginByEmailAsync(emailLoginModel.Email);
-        
+
         if (user != null)
         {
             var customAuthStateProvider = (CustomAuthenticationStateProvider)AuthStateProvider;
@@ -286,7 +279,7 @@
     private async Task HandleValidSubmit()
     {
         errorMessage = "";
-        
+
         var user = await AuthService.LoginAsync(loginModel.Username, loginModel.Password);
         if (user != null)
         {

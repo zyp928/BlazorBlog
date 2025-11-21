@@ -196,6 +196,7 @@
 .modal-header {
     text-align: center;
     margin-bottom: 24px;
+    padding: 0 20px;
 }
 
 .modal-title {
@@ -421,7 +422,7 @@
     background: var(--primary-color);
 }
 
-.input-group {
+.login-input-group {
     position: relative;
     display: flex;
     align-items: center;
@@ -942,6 +943,7 @@
         grid-template-columns: 1fr;
     }
 }
+
 /* ========================================
    焦点样式优化 - 移除页面加载时的蓝色边框
    ======================================== */
@@ -1171,4 +1173,22 @@ textarea:focus-visible,
     .editor-panel {
         height: 400px;
     }
+}
+
+/* Login Input with Icon */
+.input-icon {
+    position: absolute;
+    left: 12px;
+    color: #94a3b8;
+    font-size: 1.1rem;
+    z-index: 10;
+    pointer-events: none;
+}
+
+.form-input.with-icon {
+    padding-left: 40px;
+}
+
+.form-input.with-btn {
+    padding-right: 100px;
 }

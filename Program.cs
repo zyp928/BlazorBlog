@@ -11,6 +11,8 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
+builder.Services.AddHttpClient();
+
 builder.Services.AddMemoryCache();
 
 // 配置 PostgreSQL 数据库

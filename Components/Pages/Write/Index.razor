@@ -5,6 +5,7 @@
 @inject IPostService PostService
 @inject ICategoryService CategoryService
 @inject ITagService TagService
+@inject IUserService UserService
 @inject AuthenticationStateProvider AuthStateProvider
 @inject NavigationManager Navigation
 @rendermode InteractiveServer
@@ -261,7 +262,7 @@
             if (string.IsNullOrEmpty(username))
                 return;
 
-            var user = await ((IUserService)null!).GetUserByUsernameAsync(username);
+            var user = await UserService.GetUserByUsernameAsync(username);
             if (user == null)
                 return;
 

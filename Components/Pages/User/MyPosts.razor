@@ -1,0 +1,170 @@
+@page "/user/posts"
+@using BlazorBlog.Services.Interfaces
+@using BlazorBlog.Models
+@inject IPostService PostService
+@inject IUserService UserService
+@inject AuthenticationStateProvider AuthStateProvider
+@inject NavigationManager Navigation
+@rendermode InteractiveServer
+
+<PageTitle>我的文章 - IT技术社区</PageTitle>
+
+<div class="container py-4">
+    <div class="row">
+        <div class="col-lg-10 mx-auto">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2 class="mb-0">我的文章</h2>
+                <a href="/write" class="btn btn-primary">
+                    <i class="bi bi-pencil-square me-1"></i>写文章
+                </a>
+            </div>
+
+            <div class="card shadow-sm">
+                <div class="card-header bg-white">
+                    <ul class="nav nav-tabs card-header-tabs">
+                        <li class="nav-item">
+                            <button class="nav-link @(activeTab == "all" ? "active" : "")" @onclick='() => SetTab("all")'>全部</button>
+                        </li>
+                        <li class="nav-item">
+                            <button class="nav-link @(activeTab == "published" ? "active" : "")" @onclick='() => SetTab("published")'>已发布</button>
+                        </li>
+                        <li class="nav-item">
+                            <button class="nav-link @(activeTab == "draft" ? "active" : "")" @onclick='() => SetTab("draft")'>草稿箱</button>
+                        </li>
+                    </ul>
+                </div>
+                <div class="card-body">
+                    @if (isLoading)
+                    {
+                        <div class="text-center py-5">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                        </div>
+                    }
+                    else if (!filteredPosts.Any())
+                    {
+                        <div class="text-center py-5 text-muted">
+                            <i class="bi bi-journal-text" style="font-size: 3rem;"></i>
+                            <p class="mt-3">暂无文章</p>
+                            <a href="/write" class="btn btn-outline-primary btn-sm">开始创作</a>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="list-group list-group-flush">
+                            @foreach (var post in filteredPosts)
+                            {
+                                <div class="list-group-item py-3">
+                                    <div class="d-flex justify-content-between align-items-start">
+                                        <div class="flex-grow-1">
+                                            <h5 class="mb-1">
+                                                <a href="/post/@post.Slug" class="text-decoration-none text-dark">
+                                                    @if (string.IsNullOrWhiteSpace(post.Title))
+                                                    {
+                                                        <span class="text-muted fst-italic">无标题</span>
+                                                    }
+                                                    else
+                                                    {
+                                                        @post.Title
+                                                    }
+                                                </a>
+                                                @if (post.Status == "draft")
+                                                {
+                                                    <span class="badge bg-secondary ms-2">草稿</span>
+                                                }
+                                                else if (post.Status == "published")
+                                                {
+                                                    <span class="badge bg-success ms-2">已发布</span>
+                                                }
+                                            </h5>
+                                            <p class="mb-1 text-muted small">
+                                                <span class="me-3"><i class="bi bi-clock me-1"></i>@post.UpdatedAt.ToString("yyyy-MM-dd HH:mm")</span>
+                                                <span class="me-3"><i class="bi bi-eye me-1"></i>@post.ViewsCount 阅读</span>
+                                                <span><i class="bi bi-chat me-1"></i>@post.CommentsCount 评论</span>
+                                            </p>
+                                            @if (!string.IsNullOrWhiteSpace(post.Summary))
+                                            {
+                                                <p class="mb-1 text-muted text-truncate" style="max-width: 800px;">@post.Summary</p>
+                                            }
+                                        </div>
+                                        <div class="d-flex gap-2 ms-3">
+                                            <a href="/write/@post.Id" class="btn btn-outline-primary btn-sm">
+                                                <i class="bi bi-pencil"></i> 编辑
+                                            </a>
+                                            <button class="btn btn-outline-danger btn-sm" @onclick="() => DeletePost(post)">
+                                                <i class="bi bi-trash"></i> 删除
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private List<Post> allPosts = new();
+    private List<Post> filteredPosts = new();
+    private string activeTab = "all";
+    private bool isLoading = true;
+    private BlazorBlog.Models.User? currentUser;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+            var username = authState.User.Identity?.Name;
+
+            if (!string.IsNullOrEmpty(username))
+            {
+                currentUser = await UserService.GetUserByUsernameAsync(username);
+                if (currentUser != null)
+                {
+                    allPosts = await PostService.GetPostsByUserAsync(currentUser.Id);
+                    FilterPosts();
+                }
+            }
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private void SetTab(string tab)
+    {
+        activeTab = tab;
+        FilterPosts();
+    }
+
+    private void FilterPosts()
+    {
+        switch (activeTab)
+        {
+            case "published":
+                filteredPosts = allPosts.Where(p => p.Status == "published").ToList();
+                break;
+            case "draft":
+                filteredPosts = allPosts.Where(p => p.Status == "draft").ToList();
+                break;
+            default:
+                filteredPosts = allPosts;
+                break;
+        }
+    }
+
+    private async Task DeletePost(Post post)
+    {
+        if (await PostService.DeletePostAsync(post.Id))
+        {
+            allPosts.Remove(post);
+            FilterPosts();
+        }
+    }
+}

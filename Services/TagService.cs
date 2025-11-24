@@ -36,6 +36,13 @@ public class TagService : ITagService
             .FirstOrDefaultAsync(t => t.Slug == slug);
     }
 
+    public async Task<Tag?> GetTagByNameAsync(string name)
+    {
+        return await _context.Tags
+            .Include(t => t.Posts)
+            .FirstOrDefaultAsync(t => t.Name == name);
+    }
+
     public async Task<Tag> CreateTagAsync(Tag tag)
     {
         tag.Id = Guid.NewGuid();
